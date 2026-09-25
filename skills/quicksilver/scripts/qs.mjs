@@ -7,11 +7,17 @@ import path from 'node:path';
 import os from 'node:os';
 import { execFileSync } from 'node:child_process';
 
-const API = (process.env.QUICKSILVER_API_BASE || 'https://api.typesafe.ai').replace(/\/$/, '');
 const HOME = process.env.QUICKSILVER_HOME || path.join(os.homedir(), '.quicksilver');
 const CONFIG = path.join(HOME, 'config.json');
 const STATS = path.join(HOME, 'stats.json');
-const KEY_URL = 'https://console.typesafe.ai';
+// Jev is served by TypeSafe directly and by OpenRouter's Decisions endpoint; same request/answer shape.
+const PROVIDERS = {
+  typesafe: { base: 'https://api.typesafe.ai', decide: '/v1/systemone', check: '/v1/models', model: 'jev-latest',
+    keyUrl: 'https://console.typesafe.ai', env: ['JEV_API_KEY', 'TYPESAFE_API_KEY'] },
+  openrouter: { base: 'https://openrouter.ai/api', decide: '/alpha/decisions', check: '/v1/key', model: 'typesafe/jev-1.13',
+    keyUrl: 'https://openrouter.ai/settings/keys', env: ['OPENROUTER_API_KEY'],
+    headers: { 'HTTP-Referer': 'https://github.com/UditAkhourii/quicksilver', 'X-Title': 'quicksilver' } },
+};
 const PRICE_PER_TOKEN = 0.042 / 1e6;
 
 const IGNORE_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'out', '.next', '.nuxt', '.svelte-kit',
@@ -57,12 +63,24 @@ function writeJson(file, obj, mode) {
   if (mode) try { fs.chmodSync(file, mode); } catch {}
 }
 
-function apiKey() {
-  return process.env.JEV_API_KEY || process.env.TYPESAFE_API_KEY || readJson(CONFIG, {}).api_key || '';
+// Stored keys live under cfg.keys[provider]; a top-level api_key/model is the pre-multi-provider TypeSafe config.
+const storedKey = (cfg, name) => cfg.keys?.[name] || (name === 'typesafe' ? cfg.api_key : '') || '';
+const envKey = (name) => PROVIDERS[name].env.find((v) => process.env[v]);
+
+// --provider > QUICKSILVER_PROVIDER / JEV_PROVIDER > saved choice > whichever provider has a key (TypeSafe first).
+function provider(flags = {}) {
+  const cfg = readJson(CONFIG, {});
+  let name = flags.provider || process.env.QUICKSILVER_PROVIDER || process.env.JEV_PROVIDER || cfg.provider;
+  if (!name) name = Object.keys(PROVIDERS).find((n) => envKey(n) || storedKey(cfg, n)) || 'typesafe';
+  if (!PROVIDERS[name]) die(`unknown provider "${name}". Use: ${Object.keys(PROVIDERS).join(', ')}`);
+  const p = PROVIDERS[name], env = envKey(name);
+  return { ...p, name, base: (process.env.QUICKSILVER_API_BASE || p.base).replace(/\/$/, ''),
+    key: env ? process.env[env] : storedKey(cfg, name), keySource: env ? `env ${env}` : CONFIG };
 }
 
 function modelName(flags) {
-  return flags.model || process.env.QUICKSILVER_MODEL || readJson(CONFIG, {}).model || 'jev-latest';
+  const cfg = readJson(CONFIG, {}), p = provider(flags);
+  return flags.model || process.env.QUICKSILVER_MODEL || cfg.models?.[p.name] || (p.name === 'typesafe' && cfg.model) || p.model;
 }
 
 function recordStats(run) {
@@ -79,17 +97,17 @@ function recordStats(run) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function http(method, route, body, { retries = 5 } = {}) {
-  const key = apiKey();
-  if (!key) die(`no Jev API key. Get one at ${KEY_URL}, then run: node qs.mjs setup`, 3);
+async function decide(body, flags, { retries = 5 } = {}) {
+  const p = provider(flags);
+  if (!p.key) die(`no ${p.name} API key. Get one at ${p.keyUrl}, then run: node qs.mjs setup --provider ${p.name}`, 3);
   let lastErr;
   for (let attempt = 0; attempt <= retries; attempt++) {
     let res;
     try {
-      res = await fetch(API + route, {
-        method,
-        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-        body: body ? JSON.stringify(body) : undefined,
+      res = await fetch(p.base + p.decide, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${p.key}`, 'Content-Type': 'application/json', ...p.headers },
+        body: JSON.stringify(body),
         signal: AbortSignal.timeout(60_000),
       });
     } catch (e) {
@@ -99,7 +117,7 @@ async function http(method, route, body, { retries = 5 } = {}) {
     }
     if (res.ok) return res.json();
     const text = await res.text();
-    if (res.status === 401 || res.status === 403) die(`Jev rejected the API key (${res.status}). Get a new one at ${KEY_URL} and run: node qs.mjs setup`, 3);
+    if (res.status === 401 || res.status === 403) die(`${p.name} rejected the API key (${res.status}). Get a new one at ${p.keyUrl} and run: node qs.mjs setup --provider ${p.name}`, 3);
     if (res.status === 422 || res.status === 400) die(`Jev rejected the request (${res.status}): ${clip(text, 800)}`, 4);
     lastErr = `HTTP ${res.status}: ${clip(text, 300)}`;
     if (![408, 409, 429, 500, 502, 503, 504, 529].includes(res.status)) break;
@@ -238,7 +256,7 @@ async function runPerItem(items, flags, makeQ) {
       ? { items: Object.fromEntries(g.map((it, j) => [`i${j}`, { source: it.id, content: it.text }])) }
       : { source: g[0].id, content: g[0].text };
     const questions = Object.fromEntries(g.map((_, j) => [`q${j}`, makeQ(packed ? `\`items.i${j}\`` : '`content`', packed)]));
-    const res = await http('POST', '/v1/systemone', { model, state, questions });
+    const res = await decide({ model, state, questions }, flags);
     stats.jevTokens += res.usage?.input_tokens || 0;
     stats.model = res.model;
     return g.map((it, j) => ({ item: it, answer: res.answers[`q${j}`] }));
@@ -440,7 +458,7 @@ async function cmdFind({ pos, flags }) {
   const stats = { requests: chunks.length, jevTokens: 0 };
   const perChunk = await pool(chunks.map((c) => async () => {
     const lines = Object.fromEntries(c.lines.map(([n, t]) => [n, clip(t, 400)]));
-    const res = await http('POST', '/v1/systemone', {
+    const res = await decide({
       model,
       state: { query, lines },
       questions: {
@@ -451,7 +469,7 @@ async function cmdFind({ pos, flags }) {
         },
         exists: { type: 'noul', instructions: 'Does any line in `lines` match `query`?' },
       },
-    });
+    }, flags);
     stats.jevTokens += res.usage?.input_tokens || 0;
     const ex = res.answers.exists.noul;
     return Object.entries(res.answers.where.probabilities)
@@ -501,7 +519,7 @@ async function cmdAsk({ pos, flags }) {
   }
   body.model ||= modelName(flags);
   if (!body.state || !body.questions) die('spec needs "state" and "questions"');
-  const res = await http('POST', '/v1/systemone', body);
+  const res = await decide(body, flags);
   const lines = Object.entries(res.answers).map(([id, a]) => fmtAnswer(id, a));
   const stateText = typeof body.state === 'string' ? body.state : JSON.stringify(body.state);
   const foot = footer(t0, [{ text: stateText }], [], { requests: 1, jevTokens: res.usage?.input_tokens || 0 }, lines.join('\n'), []);
@@ -530,42 +548,45 @@ async function promptHidden(q) {
   });
 }
 
+const checkKey = (p, key) => fetch(p.base + p.check, { headers: { Authorization: `Bearer ${key}`, ...p.headers } });
+
 async function cmdSetup({ pos, flags }) {
-  if (flags.remove) {
-    const cfg = readJson(CONFIG, {});
-    delete cfg.api_key;
-    writeJson(CONFIG, cfg, 0o600);
-    return console.log(`Removed saved key from ${CONFIG}`);
-  }
-  const key = (pos[0] || (await promptHidden(`Paste your Jev API key (from ${KEY_URL}): `))).trim();
-  if (!key) die(`no key given. Get one at ${KEY_URL}`);
-  const res = await fetch(`${API}/v1/models`, { headers: { Authorization: `Bearer ${key}` } }).catch((e) => die(`network error: ${e.message}`));
-  if (res.status === 401 || res.status === 403) die(`that key was rejected by Jev (${res.status}). Double-check it at ${KEY_URL}`, 3);
-  if (!res.ok) die(`could not verify key: HTTP ${res.status}`);
+  const p = provider(flags);
   const cfg = readJson(CONFIG, {});
-  cfg.api_key = key;
-  if (flags.model) cfg.model = flags.model;
+  if (flags.remove) {
+    if (cfg.keys) delete cfg.keys[p.name];
+    if (p.name === 'typesafe') delete cfg.api_key;
+    writeJson(CONFIG, cfg, 0o600);
+    return console.log(`Removed saved ${p.name} key from ${CONFIG}`);
+  }
+  const key = (pos[0] || (await promptHidden(`Paste your ${p.name} API key (from ${p.keyUrl}): `))).trim();
+  if (!key) die(`no key given. Get one at ${p.keyUrl}`);
+  const res = await checkKey(p, key).catch((e) => die(`network error: ${e.message}`));
+  if (res.status === 401 || res.status === 403) die(`that key was rejected by ${p.name} (${res.status}). Double-check it at ${p.keyUrl}`, 3);
+  if (!res.ok) die(`could not verify key: HTTP ${res.status}`);
+  cfg.keys = { ...cfg.keys, [p.name]: key };
+  if (p.name === 'typesafe') delete cfg.api_key;
+  cfg.provider = p.name;
+  if (flags.model) cfg.models = { ...cfg.models, [p.name]: flags.model };
   writeJson(CONFIG, cfg, 0o600);
-  console.log(`✓ Jev key verified and saved to ${CONFIG}. Quicksilver is ready.`);
+  console.log(`✓ ${p.name} key verified and saved to ${CONFIG}. Quicksilver is ready (provider ${p.name}).`);
 }
 
-async function cmdStatus() {
-  const env = process.env.JEV_API_KEY ? 'JEV_API_KEY' : process.env.TYPESAFE_API_KEY ? 'TYPESAFE_API_KEY' : null;
-  const key = apiKey();
-  if (!key) { console.log(`not configured — get a key at ${KEY_URL}, then run: node qs.mjs setup`); process.exit(3); }
-  const res = await fetch(`${API}/v1/models`, { headers: { Authorization: `Bearer ${key}` } }).catch(() => null);
+async function cmdStatus({ flags }) {
+  const p = provider(flags);
+  if (!p.key) { console.log(`not configured for ${p.name} — get a key at ${p.keyUrl}, then run: node qs.mjs setup --provider ${p.name}`); process.exit(3); }
+  const res = await checkKey(p, p.key).catch(() => null);
   const s = readJson(STATS, null);
-  const src = env ? `env ${env}` : CONFIG;
-  if (!res) console.log(`key found (${src}) but Jev is unreachable right now`);
-  else if (!res.ok) { console.log(`key found (${src}) but rejected (HTTP ${res.status}) — run setup with a fresh key from ${KEY_URL}`); process.exit(3); }
-  else console.log(`ready · key from ${src} · model ${modelName({})}`);
+  if (!res) console.log(`key found (${p.keySource}) but ${p.name} is unreachable right now`);
+  else if (!res.ok) { console.log(`key found (${p.keySource}) but rejected by ${p.name} (HTTP ${res.status}) — run setup with a fresh key from ${p.keyUrl}`); process.exit(3); }
+  else console.log(`ready · provider ${p.name} · key from ${p.keySource} · model ${modelName(flags)}`);
   if (s) console.log(`since ${s.since.slice(0, 10)}: ${s.runs} runs · ${fmtK(s.items)} items judged · jev ${fmtK(s.jev_input_tokens)} tok ($${(s.jev_input_tokens * PRICE_PER_TOKEN).toFixed(4)}) · ~${fmtK(s.claude_tokens_saved)} Claude tokens not read`);
 }
 
 const HELP = `quicksilver — delegate bulk judgment calls to Jev
 
-  setup [KEY]                          save + verify your Jev key (prompts if omitted)
-  status                               check key, show lifetime savings
+  setup [KEY] [--provider P]           save + verify a key, make P the default (prompts if omitted)
+  status [--provider P]                check key, show lifetime savings
   filter "<yes/no question>" <inputs>  keep only items where the answer is yes
   classify --labels "a,b,c" <inputs>   put each item in one bucket
   rank "<query>" <inputs> [--top N]    order items by relevance
@@ -577,6 +598,7 @@ inputs: files, directories (respects .gitignore), globs, - (stdin), --items FILE
 common: --lines (each line is an item) --ext ts,tsx --json --threshold 0.5 --save FILE
         --verbose (classify: one line per item) --no-collapse (lines: don't merge repeats)
         --concurrency 16 --max-chars 60000 --limit 5000 --model jev-latest
+        --provider typesafe|openrouter (default: saved choice, else whichever has a key)
         --fast (pack small items per request: faster, less accurate)`;
 
 const COMMANDS = { setup: cmdSetup, status: cmdStatus, filter: cmdFilter, classify: cmdClassify, rank: cmdRank, find: cmdFind, ask: cmdAsk };

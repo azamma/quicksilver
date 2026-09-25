@@ -25,17 +25,25 @@ Needs Node 18+ (globs need Node 22+). There are no other dependencies.
 Run `qs status` first.
 
 - `ready` means go straight to the task.
-- `not configured` means ask the user for their Jev API key, and point them to
-  **https://console.typesafe.ai** to create one. They can:
-  1. paste it in chat. Then run `qs setup <KEY>` (it verifies the key, then
-     saves it to `~/.quicksilver/config.json`, user-only permissions), **or**
-  2. keep it out of the chat by running `node "<skill dir>/scripts/qs.mjs" setup`
+- `not configured` means ask the user for a key. Jev is reachable through two
+  providers with the same answers:
+  - **TypeSafe** (default): key from **https://console.typesafe.ai**
+  - **OpenRouter**: key from **https://openrouter.ai/settings/keys**, add `--provider openrouter`
+
+  They can:
+  1. paste it in chat. Then run `qs setup <KEY> [--provider openrouter]` (it verifies
+     the key, saves it to `~/.quicksilver/config.json` with user-only permissions,
+     and makes that provider the default), **or**
+  2. keep it out of the chat by running `node "<skill dir>/scripts/qs.mjs" setup [--provider openrouter]`
      in their own terminal. It prompts for the key with hidden input.
 
-  `JEV_API_KEY` or `TYPESAFE_API_KEY` in the environment also works, and takes precedence.
+  Env keys also work and take precedence over saved ones: `JEV_API_KEY` or
+  `TYPESAFE_API_KEY` for TypeSafe, `OPENROUTER_API_KEY` for OpenRouter.
+  Provider order: `--provider` flag, then `QUICKSILVER_PROVIDER` / `JEV_PROVIDER`,
+  then the saved choice, then whichever provider has a key (TypeSafe first).
   After setup, carry on with the original task. Don't stop at "configured".
 
-Exit code 3 means a key problem: missing, or rejected by Jev. Re-run setup.
+Exit code 3 means a key problem: missing, or rejected by the provider. Re-run setup.
 
 ## When to delegate
 

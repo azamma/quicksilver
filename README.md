@@ -36,7 +36,8 @@ npx github:UditAkhourii/quicksilver
 ```
 
 The installer copies the skill into `~/.claude/skills/quicksilver` and asks for
-your Jev key **once**. Get a key at [console.typesafe.ai](https://console.typesafe.ai).
+your Jev key **once**. Get a key at [console.typesafe.ai](https://console.typesafe.ai),
+or use an [OpenRouter](https://openrouter.ai/settings/keys) key with `--provider openrouter`.
 Then restart Claude Code. That's it. Claude uses the skill on its own whenever
 a task looks like "read a lot to decide a little".
 
@@ -47,6 +48,9 @@ a task looks like "read a lot to decide a little".
 # pass the key non-interactively (CI, dotfiles)
 npx github:UditAkhourii/quicksilver install --key YOUR_JEV_KEY
 
+# same, through OpenRouter instead of TypeSafe
+npx github:UditAkhourii/quicksilver install --provider openrouter --key YOUR_OPENROUTER_KEY
+
 # as a Claude Code plugin
 /plugin marketplace add UditAkhourii/quicksilver
 /plugin install quicksilver@quicksilver
@@ -55,9 +59,32 @@ npx github:UditAkhourii/quicksilver install --key YOUR_JEV_KEY
 git clone https://github.com/UditAkhourii/quicksilver && cd quicksilver && ./install.sh   # or .\install.ps1
 ```
 
-`JEV_API_KEY` or `TYPESAFE_API_KEY` in your environment also works. Needs Node 18+.
+`JEV_API_KEY` / `TYPESAFE_API_KEY` (TypeSafe) or `OPENROUTER_API_KEY` (OpenRouter)
+in your environment also works. With keys for both, pick one per call with
+`--provider`, or set `QUICKSILVER_PROVIDER=openrouter`. Needs Node 18+.
 No npm dependencies.
 </details>
+
+### Make it mandatory (optional)
+
+Having an agent set this up? Point it at [`AGENT-SETUP.md`](AGENT-SETUP.md): install, key, hooks and checks, step by step.
+
+Claude picks the skill on its own, but you can force it for large files. Add this
+`PreToolUse` hook to `~/.claude/settings.json`. It refuses whole-file `Read`s over
+600 lines or 60 KB and tells Claude to run `qs find` / `qs filter` first, then read
+only the hits with `offset`/`limit`:
+
+```json
+{ "hooks": { "PreToolUse": [ { "matcher": "^Read$", "hooks": [
+  { "type": "command", "command": "node \"$HOME/.claude/skills/quicksilver/scripts/guard.mjs\"", "timeout": 5 }
+] } ] } }
+```
+
+To see Jev at work, register the same script as a `PostToolUse` hook with matcher
+`^Bash$`: after every `qs` run it shows `☿ quicksilver → Jev 12 scanned · 0.6s · jev 2.1k tok ($0.0001) · …`
+in the Claude Code UI. A blocked read shows `☿ quicksilver: blocked whole Read of …`.
+
+Tune with `QUICKSILVER_GUARD_LINES` / `QUICKSILVER_GUARD_BYTES`; `QUICKSILVER_GUARD=off` disables it.
 
 ## The benchmark
 
@@ -155,11 +182,12 @@ a vibe.
 
 - It never sends `.env*`, private keys, certificates, or credentials files. It
   respects `.gitignore`, and skips binaries and files over 2 MB.
-- Content goes to TypeSafe's API (`api.typesafe.ai`). TypeSafe states that Jev
+- Content goes to TypeSafe's API (`api.typesafe.ai`), or to OpenRouter
+  (`openrouter.ai`) when that provider is selected. TypeSafe states that Jev
   is not trained on customer data. Don't point it at anything you can't send to
   a third party.
 - The key is stored in `~/.quicksilver/config.json` with user-only permissions.
-  `npx github:UditAkhourii/quicksilver setup --remove` deletes it.
+  `npx github:UditAkhourii/quicksilver setup --remove [--provider openrouter]` deletes it.
 
 ## FAQ
 

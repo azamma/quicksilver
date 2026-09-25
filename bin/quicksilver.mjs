@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // npx installer for the Quicksilver Claude Code skill.
-//   npx github:UditAkhourii/quicksilver            install skill + set Jev key once
+//   npx github:UditAkhourii/quicksilver            install skill + set Jev key once (--provider openrouter to use OpenRouter)
 //   npx github:UditAkhourii/quicksilver uninstall  remove the skill
 //   npx github:UditAkhourii/quicksilver <cmd>      run any qs command (status, filter, classify, ...)
 
@@ -28,17 +28,20 @@ if (cmd === 'install') {
   fs.cpSync(SRC, DEST, { recursive: true });
   console.log(`${c('36', '☿ quicksilver')} skill installed → ${DEST}`);
 
-  const keyFlag = rest.find((a) => a.startsWith('--key='))?.slice(6) || (rest.includes('--key') ? rest[rest.indexOf('--key') + 1] : '');
-  const ready = spawnSync(process.execPath, [QS, 'status'], { stdio: 'ignore' }).status === 0;
-  if (keyFlag) run(['setup', keyFlag]);
+  const flag = (name) => rest.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) || (rest.includes(`--${name}`) ? rest[rest.indexOf(`--${name}`) + 1] : '');
+  const keyFlag = flag('key');
+  const prov = flag('provider') ? ['--provider', flag('provider')] : [];
+  const ready = spawnSync(process.execPath, [QS, 'status', ...prov], { stdio: 'ignore' }).status === 0;
+  const keyHelp = `TypeSafe key from https://console.typesafe.ai, or OpenRouter key from https://openrouter.ai/settings/keys with --provider openrouter`;
+  if (keyFlag) run(['setup', keyFlag, ...prov]);
   else if (!ready) {
     if (process.stdin.isTTY) {
-      console.log(`\nOne-time setup: paste your Jev API key (create one at ${c('4', 'https://console.typesafe.ai')}).`);
-      if (run(['setup']) !== 0) console.log(`\nNo key saved. Run later: npx github:UditAkhourii/quicksilver setup`);
+      console.log(`\nOne-time setup: paste your Jev API key (${keyHelp}).`);
+      if (run(['setup', ...prov]) !== 0) console.log(`\nNo key saved. Run later: npx github:UditAkhourii/quicksilver setup [--provider openrouter]`);
     } else {
-      console.log(`\nNext: set your Jev key once →  npx github:UditAkhourii/quicksilver setup   (key from https://console.typesafe.ai)`);
+      console.log(`\nNext: set your Jev key once →  npx github:UditAkhourii/quicksilver setup [--provider openrouter]   (${keyHelp})`);
     }
-  } else run(['status']);
+  } else run(['status', ...prov]);
   console.log(`\n${c('32', 'Done.')} Restart Claude Code (or start a new session). Claude now delegates bulk judgment calls to Jev automatically.`);
   console.log(`Try asking: "which files in this repo handle auth?" or "find the errors in app.log".`);
 } else if (cmd === 'uninstall') {
