@@ -1,0 +1,27 @@
+{
+  "name": "quicksilver-skill",
+  "version": "0.2.0",
+  "description": "Claude Code skill that hands bulk judgment calls (filter, classify, rank, find) to Jev: 86% fewer Claude tokens on benchmark, up to 20x faster.",
+  "type": "module",
+  "bin": {
+    "quicksilver": "bin/quicksilver.mjs"
+  },
+  "files": [
+    "bin/",
+    "skills/",
+    ".claude-plugin/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": ["claude", "claude-code", "skill", "jev", "typesafe", "tokens", "llm", "cost", "agents"],
+  "author": "Udit Akhouri",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/UditAkhourii/quicksilver.git"
+  },
+  "homepage": "https://github.com/UditAkhourii/quicksilver#readme"
+}

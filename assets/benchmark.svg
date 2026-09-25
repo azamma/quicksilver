@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 590" width="960" height="590" font-family="ui-sans-serif, -apple-system, Segoe UI, Helvetica, Arial, sans-serif">
+  <style>
+    .lbl { font-size: 13px; fill: #d6dbe4 }
+    .dim { font-size: 11px; fill: #7d8796 }
+    .qsl { font-size: 11px; fill: #9fe8ff; font-weight: 600 }
+    .cut { font-size: 14px; fill: #9fe8ff; font-weight: 700 }
+    .ok { font-size: 12px; fill: #8ee6a6 }
+    .warn { font-size: 12px; fill: #f2c46d }
+    .h { font-size: 11px; fill: #7d8796; letter-spacing: .06em; text-transform: uppercase }
+    .base { fill: #3a4252 }
+    .qs { fill: url(#hg) }
+  </style>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0d1117"/><stop offset="1" stop-color="#161b26"/></linearGradient>
+    <linearGradient id="hg" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#e8edf5"/><stop offset="1" stop-color="#5fd4ff"/></linearGradient>
+  </defs>
+  <rect width="960" height="590" rx="14" fill="url(#bg)"/>
+  <text x="28" y="44" font-size="22" font-weight="700" fill="#f2f5fa">Claude tokens per task: alone vs with Quicksilver</text>
+  <text x="28" y="68" font-size="13" fill="#9aa4b2">12 benchmark tasks · measured Claude Code subagents vs Quicksilver · 86% fewer tokens overall · quality 94% → 90%</text>
+  <rect x="300" y="86" width="12" height="8" rx="2" class="base"/><text x="318" y="94" class="dim">Claude alone</text>
+  <rect x="410" y="86" width="12" height="8" rx="2" class="qs"/><text x="428" y="94" class="dim">Claude + Quicksilver</text>
+  <text x="810" y="94" text-anchor="end" class="h">tokens</text>
+  <text x="900" y="94" text-anchor="end" class="h">quality</text>
+  <text x="936" y="94" text-anchor="end" class="h">speed</text>
+  
+  <text x="286" y="133" text-anchor="end" class="lbl">Real log triage</text>
+  <rect x="300" y="121" width="400.0" height="9" rx="2" class="base"/>
+  <rect x="300" y="132" width="59.4" height="9" rx="2" class="qs"/>
+  <text x="708" y="130" class="dim">84.4k</text>
+  <text x="367.3950590966153" y="141" class="qsl">12.5k</text>
+  <text x="810" y="136" text-anchor="end" class="cut">−85%</text>
+  <text x="900" y="136" text-anchor="end" class="warn">54% → 23%</text>
+  <text x="936" y="136" text-anchor="end" class="dim">2×</text>
+  <text x="286" y="167" text-anchor="end" class="lbl">Needles in a noisy service log</text>
+  <rect x="300" y="155" width="253.3" height="9" rx="2" class="base"/>
+  <rect x="300" y="166" width="12.0" height="9" rx="2" class="qs"/>
+  <text x="561.2556431938227" y="164" class="dim">53.5k</text>
+  <text x="319.999336791492" y="175" class="qsl">2.5k</text>
+  <text x="810" y="170" text-anchor="end" class="cut">−95%</text>
+  <text x="900" y="170" text-anchor="end" class="ok">100% → 100%</text>
+  <text x="936" y="170" text-anchor="end" class="dim">≈</text>
+  <text x="286" y="201" text-anchor="end" class="lbl">Support ticket routing</text>
+  <rect x="300" y="189" width="70.9" height="9" rx="2" class="base"/>
+  <rect x="300" y="200" width="12.8" height="9" rx="2" class="qs"/>
+  <text x="378.9064639143514" y="198" class="dim">15.0k</text>
+  <text x="320.80466140837063" y="209" class="qsl">2.7k</text>
+  <text x="810" y="204" text-anchor="end" class="cut">−82%</text>
+  <text x="900" y="204" text-anchor="end" class="ok">100% → 99%</text>
+  <text x="936" y="204" text-anchor="end" class="dim">10×</text>
+  <text x="286" y="235" text-anchor="end" class="lbl">Spam filtering</text>
+  <rect x="300" y="223" width="96.4" height="9" rx="2" class="base"/>
+  <rect x="300" y="234" width="20.4" height="9" rx="2" class="qs"/>
+  <text x="404.4020938440039" y="232" class="dim">20.4k</text>
+  <text x="328.3699756034013" y="243" class="qsl">4.3k</text>
+  <text x="810" y="238" text-anchor="end" class="cut">−79%</text>
+  <text x="900" y="238" text-anchor="end" class="warn">97% → 92%</text>
+  <text x="936" y="238" text-anchor="end" class="dim">8×</text>
+  <text x="286" y="269" text-anchor="end" class="lbl">Review sentiment</text>
+  <rect x="300" y="257" width="92.6" height="9" rx="2" class="base"/>
+  <rect x="300" y="268" width="14.1" height="9" rx="2" class="qs"/>
+  <text x="400.56495890475856" y="266" class="dim">19.5k</text>
+  <text x="322.0789691844904" y="277" class="qsl">3.0k</text>
+  <text x="810" y="272" text-anchor="end" class="cut">−85%</text>
+  <text x="900" y="272" text-anchor="end" class="ok">97% → 96%</text>
+  <text x="936" y="272" text-anchor="end" class="dim">15×</text>
+  <text x="286" y="303" text-anchor="end" class="lbl">Codebase discovery</text>
+  <rect x="300" y="291" width="125.2" height="9" rx="2" class="base"/>
+  <rect x="300" y="302" width="11.4" height="9" rx="2" class="qs"/>
+  <text x="433.1995547028589" y="300" class="dim">26.4k</text>
+  <text x="319.4166607451621" y="311" class="qsl">2.4k</text>
+  <text x="810" y="306" text-anchor="end" class="cut">−91%</text>
+  <text x="900" y="306" text-anchor="end" class="ok">100% → 100%</text>
+  <text x="936" y="306" text-anchor="end" class="dim">8×</text>
+  <text x="286" y="337" text-anchor="end" class="lbl">Security review shortlist</text>
+  <rect x="300" y="325" width="45.2" height="9" rx="2" class="base"/>
+  <rect x="300" y="336" width="11.6" height="9" rx="2" class="qs"/>
+  <text x="353.1929226177787" y="334" class="dim">9.5k</text>
+  <text x="319.6298349084535" y="345" class="qsl">2.5k</text>
+  <text x="810" y="340" text-anchor="end" class="cut">−74%</text>
+  <text x="900" y="340" text-anchor="end" class="warn">100% → 89%</text>
+  <text x="936" y="340" text-anchor="end" class="dim">19×</text>
+  <text x="286" y="371" text-anchor="end" class="lbl">CI failure triage</text>
+  <rect x="300" y="359" width="43.1" height="9" rx="2" class="base"/>
+  <rect x="300" y="370" width="11.9" height="9" rx="2" class="qs"/>
+  <text x="351.1275018356664" y="368" class="dim">9.1k</text>
+  <text x="319.92827873706153" y="379" class="qsl">2.5k</text>
+  <text x="810" y="374" text-anchor="end" class="cut">−72%</text>
+  <text x="900" y="374" text-anchor="end" class="ok">100% → 100%</text>
+  <text x="936" y="374" text-anchor="end" class="dim">10×</text>
+  <text x="286" y="405" text-anchor="end" class="lbl">Semantic search in a huge file</text>
+  <rect x="300" y="393" width="42.7" height="9" rx="2" class="base"/>
+  <rect x="300" y="404" width="19.4" height="9" rx="2" class="qs"/>
+  <text x="350.6916791018262" y="402" class="dim">9.0k</text>
+  <text x="327.4083232667756" y="413" class="qsl">4.1k</text>
+  <text x="810" y="408" text-anchor="end" class="cut">−55%</text>
+  <text x="900" y="408" text-anchor="end" class="ok">100% → 100%</text>
+  <text x="936" y="408" text-anchor="end" class="dim">≈</text>
+  <text x="286" y="439" text-anchor="end" class="lbl">Relevance ranking</text>
+  <rect x="300" y="427" width="186.8" height="9" rx="2" class="base"/>
+  <rect x="300" y="438" width="15.9" height="9" rx="2" class="qs"/>
+  <text x="494.78793907956134" y="436" class="dim">39.4k</text>
+  <text x="323.9170041924252" y="447" class="qsl">3.4k</text>
+  <text x="810" y="442" text-anchor="end" class="cut">−91%</text>
+  <text x="900" y="442" text-anchor="end" class="ok">100% → 100%</text>
+  <text x="936" y="442" text-anchor="end" class="dim">≈</text>
+  <text x="286" y="473" text-anchor="end" class="lbl">Commit classification</text>
+  <rect x="300" y="461" width="82.7" height="9" rx="2" class="base"/>
+  <rect x="300" y="472" width="15.2" height="9" rx="2" class="qs"/>
+  <text x="390.6926265425519" y="470" class="dim">17.5k</text>
+  <text x="323.182737629977" y="481" class="qsl">3.2k</text>
+  <text x="810" y="476" text-anchor="end" class="cut">−82%</text>
+  <text x="900" y="476" text-anchor="end" class="warn">83% → 76%</text>
+  <text x="936" y="476" text-anchor="end" class="dim">20×</text>
+  <text x="286" y="507" text-anchor="end" class="lbl">Numeric threshold stress test</text>
+  <rect x="300" y="495" width="48.2" height="9" rx="2" class="base"/>
+  <rect x="300" y="506" width="11.4" height="9" rx="2" class="qs"/>
+  <text x="356.19157251474456" y="504" class="dim">10.2k</text>
+  <text x="319.42613515241953" y="515" class="qsl">2.4k</text>
+  <text x="810" y="510" text-anchor="end" class="cut">−76%</text>
+  <text x="900" y="510" text-anchor="end" class="ok">100% → 100%</text>
+  <text x="936" y="510" text-anchor="end" class="dim">3×</text>
+  <text x="28" y="566" class="dim">Quality: F1 / accuracy / hit@k against ground truth. Green = within 2 pts of Claude alone. Reproduce: bench/README.md</text>
+</svg>

@@ -1,0 +1,12 @@
+s01  F1 22.7%  claude 12538 tok vs 62261 input tok  43.5s  jev $0.0325
+s02  F1 100.0%  claude 2533 tok vs 56424 input tok  64.2s  jev $0.0436
+s03  accuracy 98.5%  claude 2703 tok vs 4070 input tok  5.7s  jev $0.0032
+s04  F1 92.3%  claude 4300 tok vs 7982 input tok  7.6s  jev $0.0042
+s05  accuracy 96.0%  claude 2972 tok vs 6298 input tok  5.6s  jev $0.0028
+s06  F1 100.0%  claude 2410 tok vs 201330 input tok  5.7s  jev $0.0127
+s07  F1 88.9%  claude 2455 tok vs 1425 input tok  2.6s  jev $0.0006
+s08  accuracy 100.0%  claude 2518 tok vs 2394 input tok  3.0s  jev $0.0015
+s09  hit@5 100.0%  claude 4097 tok vs 136024 input tok  38.5s  jev $0.2129
+s10  hit@3 100.0%  claude 3360 tok vs 201330 input tok  55.5s  jev $0.1338
+s11  accuracy 75.7%  claude 3205 tok vs 3141 input tok  5.2s  jev $0.0033
+s12  F1 100.0%  claude 2412 tok vs 3492 input tok  5.6s  jev $0.0029
