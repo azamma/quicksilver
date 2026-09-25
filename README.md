@@ -158,6 +158,7 @@ qs rank     "where do we issue refunds?" src --top 5              # relevance ra
 qs find     "the retry backoff logic" huge_module.py              # locate lines in huge files
 qs ask      "Does this contract allow termination without notice?" --state @contract.txt
 qs status                                                          # key check + lifetime tokens saved
+qs gain                                                            # savings by command, project, day (--history N: per run)
 ```
 
 The output is built for an LLM to read: one line per hit, repeated log patterns

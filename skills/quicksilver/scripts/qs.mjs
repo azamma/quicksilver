@@ -10,6 +10,7 @@ import { execFileSync } from 'node:child_process';
 const HOME = process.env.QUICKSILVER_HOME || path.join(os.homedir(), '.quicksilver');
 const CONFIG = path.join(HOME, 'config.json');
 const STATS = path.join(HOME, 'stats.json');
+const HISTORY = path.join(HOME, 'history.jsonl');
 // Jev is served by TypeSafe directly and by OpenRouter's Decisions endpoint; same request/answer shape.
 const PROVIDERS = {
   typesafe: { base: 'https://api.typesafe.ai', decide: '/v1/systemone', check: '/v1/models', model: 'jev-latest',
@@ -91,6 +92,12 @@ function recordStats(run) {
   s.jev_input_tokens += run.jevTokens;
   s.claude_tokens_saved += Math.max(0, run.saved);
   try { writeJson(STATS, s); } catch {}
+  // One line per run, for `qs gain`. Content never goes here, only counts.
+  try {
+    const row = { ts: new Date().toISOString(), cmd: process.argv[2], project: path.basename(process.cwd()),
+      provider: provider().name, items: run.items, requests: run.requests, jev_tokens: run.jevTokens, saved: Math.max(0, run.saved) };
+    fs.appendFileSync(HISTORY, JSON.stringify(row) + '\n', { mode: 0o600 });
+  } catch {}
 }
 
 // ---------- HTTP ----------
@@ -583,10 +590,47 @@ async function cmdStatus({ flags }) {
   if (s) console.log(`since ${s.since.slice(0, 10)}: ${s.runs} runs · ${fmtK(s.items)} items judged · jev ${fmtK(s.jev_input_tokens)} tok ($${(s.jev_input_tokens * PRICE_PER_TOKEN).toFixed(4)}) · ~${fmtK(s.claude_tokens_saved)} Claude tokens not read`);
 }
 
+function readHistory() {
+  try { return fs.readFileSync(HISTORY, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)); } catch { return []; }
+}
+
+// Sum rows per key: { key: { runs, items, jev_tokens, saved } }, largest savings first.
+function groupBy(rows, key) {
+  const g = {};
+  for (const r of rows) {
+    const t = (g[key(r)] ??= { runs: 0, items: 0, jev_tokens: 0, saved: 0 });
+    t.runs += 1; t.items += r.items; t.jev_tokens += r.jev_tokens; t.saved += r.saved;
+  }
+  return Object.entries(g);
+}
+
+function cmdGain({ flags }) {
+  const rows = readHistory(), s = readJson(STATS, null);
+  if (flags.json) return console.log(JSON.stringify({ totals: s, history: rows }, null, 2));
+  if (!s) return console.log('no runs yet');
+  const cost = (t) => `$${(t * PRICE_PER_TOKEN).toFixed(4)}`;
+  const line = (k, t) => `  ${k.padEnd(16)} ${String(t.runs).padStart(5)} runs  ${fmtK(t.items).padStart(7)} items  ` +
+    `jev ${fmtK(t.jev_tokens).padStart(7)} (${cost(t.jev_tokens)})  saved ~${fmtK(t.saved)}`;
+  if (flags.history) {
+    const n = num(flags.history, 20);
+    for (const r of rows.slice(-n)) console.log(`${r.ts.slice(0, 16).replace('T', ' ')}  ${(r.cmd || '').padEnd(8)} ${(r.project || '').padEnd(18)} ` +
+      `${fmtK(r.items).padStart(6)} items  jev ${fmtK(r.jev_tokens).padStart(6)}  saved ~${fmtK(r.saved)}  ${r.provider || ''}`);
+    return;
+  }
+  console.log(`quicksilver since ${s.since.slice(0, 10)}: ${s.runs} runs · ${fmtK(s.items)} items · jev ${fmtK(s.jev_input_tokens)} tok (${cost(s.jev_input_tokens)}) · ~${fmtK(s.claude_tokens_saved)} Claude tokens not read`);
+  if (!rows.length) return;
+  const show = (title, entries) => { console.log(`\n${title}`); for (const [k, t] of entries) console.log(line(k, t)); };
+  const bySaved = (e) => e.sort((a, b) => b[1].saved - a[1].saved);
+  show('by command', bySaved(groupBy(rows, (r) => r.cmd || '?')));
+  show('by project', bySaved(groupBy(rows, (r) => r.project || '?')).slice(0, 10));
+  show('last 7 days', groupBy(rows, (r) => r.ts.slice(0, 10)).sort().slice(-7));
+}
+
 const HELP = `quicksilver — delegate bulk judgment calls to Jev
 
   setup [KEY] [--provider P]           save + verify a key, make P the default (prompts if omitted)
   status [--provider P]                check key, show lifetime savings
+  gain [--history [N]] [--json]        savings by command, project and day; --history lists runs
   filter "<yes/no question>" <inputs>  keep only items where the answer is yes
   classify --labels "a,b,c" <inputs>   put each item in one bucket
   rank "<query>" <inputs> [--top N]    order items by relevance
@@ -601,7 +645,7 @@ common: --lines (each line is an item) --ext ts,tsx --json --threshold 0.5 --sav
         --provider typesafe|openrouter (default: saved choice, else whichever has a key)
         --fast (pack small items per request: faster, less accurate)`;
 
-const COMMANDS = { setup: cmdSetup, status: cmdStatus, filter: cmdFilter, classify: cmdClassify, rank: cmdRank, find: cmdFind, ask: cmdAsk };
+const COMMANDS = { setup: cmdSetup, status: cmdStatus, gain: cmdGain, filter: cmdFilter, classify: cmdClassify, rank: cmdRank, find: cmdFind, ask: cmdAsk };
 
 process.on('unhandledRejection', (e) => die(`unexpected error: ${e?.stack || e}`, 5));
 process.on('uncaughtException', (e) => die(`unexpected error: ${e?.stack || e}`, 5));
